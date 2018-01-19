@@ -1,0 +1,132 @@
+<!DOCTYPE html >
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=9"/>
+    <style type="text/css" media="screen">
+    </style>
+
+<script type="text/javascript" src="cursor.js">
+</script>
+<script type="text/javascript" src="bunny.js">
+</script>
+
+<script>
+
+	MAX_BUNNIES = 9;
+
+	Y_MIN_SPEED = 4;
+	Y_AVG_SPEED = 5;
+	Y_MAX_SPEED = 6;
+
+	X_MINSPEED = 2;
+	X_MAXSPEED = 3;
+
+	FRESH_BATCH_START = 0.5;
+	function init()
+	{
+		currentArray=1
+		drawCount = 1;
+		totalSaved = 0;
+		totalKilled = 0;
+ 		canvas = document.getElementById("myCanvas");
+		ctx = canvas.getContext("2d");
+
+		//initialize Cursor
+		cursor =  new MyCursor(canvas,ctx);
+		canvas.addEventListener("mousemove", mouseXY, false);
+		canvas.addEventListener("click",canvasClicked,false);
+
+		initializeBunnies(MAX_BUNNIES);
+		setInterval("draw()",60);
+	}
+
+	function initializeBunnies(nb)
+	{
+		//initialize Bunny
+		buns = new Array(nb);
+		var xspeed = X_MINSPEED;
+		var yspeed = Y_MIN_SPEED;
+
+		if(nb >= 3 && nb <= 5 )
+			yspeed = Y_AVG_SPEED;
+		else if(nb < 3)
+			yspeed = Y_MAX_SPEED;
+
+		for(var i=0;i<buns.length;i++)
+		{
+			if(i % 2 == 0)
+			{
+				buns[i] = new MyBunny(canvas,ctx,(xspeed*-1),yspeed);
+			}
+			else
+			{
+				buns[i] = new MyBunny(canvas,ctx,xspeed,yspeed);
+			}
+		}
+	}
+
+	function mouseXY(e)
+	{
+		cursor.x = e.pageX;
+		cursor.y = e.pageY;
+	}
+
+	function canvasClicked(e)
+	{
+		var clickX = e.pageX;
+		var clickY = e.pageY;
+		for(var i=0;i<buns.length;i++)
+		{
+			if(buns[i] &&
+			   buns[i].x >= clickX - 25 &&
+			   buns[i].x <= clickX + 25 &&
+			   buns[i].y >= clickY - 25 &&
+			   buns[i].y <= clickY + 25)
+			{
+				bunnyClicked(buns[i]);
+				totalSaved++;
+			}
+		}
+	}
+
+	function clear()
+	{
+		ctx.clearRect(0,0,canvas.width,canvas.height);
+	}
+
+	function draw()
+	{
+		clear();
+		if(buns)
+			drawBunny(canvas,ctx,buns);
+		drawCursor(cursor);
+		var saved_gameStats = document.getElementById("saved_stats");
+		saved_gameStats.value = totalSaved;
+
+		//instead of just 10 - need to crosscheck how many are exited canvas.
+		if(drawCount % 100 == 0)
+		{
+			var batchSize = Math.ceil(Math.random()*10);
+			if(batchSize < 5)
+				batchSize = batchSize*2;
+			initializeBunnies(Math.floor((batchSize)))
+			currentArray = (currentArray * -1) + 1
+		}
+		drawCount++;
+	}
+
+</script>
+
+  </head>
+  <body onload="init()">
+	<canvas id = "myCanvas" height="500px" width="500px">
+	</canvas>
+	<br>
+	<div>
+	<h3>
+	<img src="images/bunny_2.png" id="b3s"/> :
+	<input type="text" id="saved_stats" value="" column="3" readonly="true"/>
+	</h3>
+
+  </body>
+</html>

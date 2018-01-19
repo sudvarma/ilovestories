@@ -1,0 +1,472 @@
+<!DOCTYPE html >
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=9"/>
+    <style type="text/css" media="screen">
+    </style>
+
+<script type="text/javascript" src="tile.js">
+</script>
+<script type="text/javascript" src="puzzleimage.js">
+</script>
+<script type="text/javascript" src="puzzlepoint.js">
+</script>
+
+<script>
+
+	function init()
+	{
+		//todo - show the shuffled images on the right or bottom based on the given image size.
+		//todo - move the grid image from the puzzle back to shuffled area.
+		//todo - PERFORMANCE
+		IMAGE_WIDTH = 500;
+		IMAGE_HEIGHT = 375;
+
+ 		canvas = document.getElementById("myCanvas");
+		ctx = canvas.getContext("2d");
+
+		toggle_puzzle_image=true;
+
+		addEventListener("click",cancelCanvasClicked,false);
+
+		canvas.addEventListener("click",canvasClicked,false);
+		canvas.addEventListener("mousedown",selectImage,false);
+		canvas.addEventListener("mousemove", moveImage, false);
+
+		loaded_images = 0;
+		total_images = 4;
+		draw_initialized = false;
+		puzzle_partition = 4;
+		puzzle_grids = puzzle_partition * puzzle_partition;
+
+		image_in_action = null;
+		image_movement = false;
+		image_in_action_x = -1;
+		image_in_action_y = -1;
+		image_index = -1;
+		image_from = 0;
+
+		shuffled_image_margin = 10;
+		shuffle_start_image_count = 0;
+
+		img = new Image();
+		img.onload = initializeTiles;
+		img.src = "http://localhost/puzzle/images/GoodNight.jpg";
+
+		img_left = new Image();
+		img_left.onload = function()
+		{
+			img_left_x = 0;
+			img_left_y = Math.floor(canvas.height - ((canvas.height - img_height)/2)-(img_left.height/2));
+			ctx.drawImage(img_left,img_left_x,img_left_y);
+			loaded_images++;
+			if(loaded_images >= total_images)
+			{
+				draw();
+			}
+
+		};
+		img_left.src = "http://localhost/puzzle/images/left.png";
+
+		img_right = new Image();
+		img_right.onload = function()
+		{
+			img_right_x = (canvas.width-img_right.width);
+			img_right_y = Math.floor(canvas.height - ((canvas.height - img_height)/2)-(img_right.height/2));
+			ctx.drawImage(img_right,img_right_x,img_right_y);
+			loaded_images++;
+			if(loaded_images >= total_images)
+			{
+				draw();
+			}
+		};
+		img_right.src = "http://localhost/puzzle/images/right.png";
+
+		img_toggle = new Image();
+		img_toggle.onload = function()
+		{
+			img_toggle_x = (canvas.width - img_toggle.width);
+			img_toggle_y = 0;
+			ctx.drawImage(img_toggle,img_toggle_x,img_toggle_y);
+			loaded_images++;
+			if(loaded_images >= total_images)
+			{
+				draw();
+			}
+
+		};
+		img_toggle.src = "http://localhost/puzzle/images/swap_image.png";
+
+		setInterval("drawImageMove()",60);
+	}
+
+	function draw()
+	{
+		clear();
+
+		displayShuffleButton();
+		displayShuffledImages();
+		displayOrderedImages();
+
+		if(toggle_puzzle_image)
+			displayGrid();
+		else
+			displayImage();
+
+		displayToggleButton();
+	}
+
+	function drawImageMove()
+	{
+		if(image_movement && image_in_action)
+		{
+			draw();
+			ctx.putImageData(image_in_action.getImageData(),
+							 (image_in_action_x-(grid_width/2)),
+							 (image_in_action_y-(grid_height/2)));
+		}
+	}
+
+	function nullifyImageMove()
+	{
+		image_in_action = null;
+		image_movement = false;
+		image_in_action_x = -1;
+		image_in_action_y = -1;
+		image_index = -1;
+		image_from  = 0;
+	}
+
+	function cancelCanvasClicked(e)
+	{
+		nullifyImageMove();
+		draw();
+	}
+
+	function canvasClicked(e)
+	{
+		var clickX = e.pageX;
+		var clickY = e.pageY;
+		if(image_movement)
+		{
+			for(var i=0;i<grid_ordered.length;i++)
+			{
+				var tile_cordinates = grid_ordered[i].getCordinates();
+				var tile_x = tile_cordinates.getX();
+				var tile_y = tile_cordinates.getY();
+				if(clickX >= tile_x  &&  clickX <= tile_x + grid_width &&
+				   clickY >= tile_y  &&  clickY <= tile_y + grid_height)
+				{
+					if(!grid_ordered[i].getImage() && image_in_action)
+					{
+						grid_ordered[i].setImage(image_in_action);
+						if(image_from == 0)
+						{
+							grid_shuffled[image_index].setImage(null);
+							shiftShuffledTiles(image_index);
+						}
+						else
+						{
+							grid_ordered[image_index].setImage(null);
+						}
+						break;
+					}
+				}
+			}
+			nullifyImageMove();
+			draw();
+			if(verifyDone())
+				alert("Done. Congrats!!!");
+		}
+		else
+		{
+			if(clickX >= img_left_x && clickX <= (img_left_x + img_left.width) &&
+			   clickY >= img_left_y && clickY <= (img_left_y + img_left.height))
+			{
+				if(shuffle_start_image_count>0)
+				{
+					shuffle_start_image_count--;
+					draw();
+				}
+			}
+			else if(clickX >= img_right_x && clickX <= (img_right_x + img_right.width) &&
+					clickY >= img_right_y && clickY <= (img_right_y + img_right.height))
+			{
+				if(shuffle_start_image_count < (grid_shuffled.length - shuffled_display_count))
+				{
+					shuffle_start_image_count++;
+					draw();
+				}
+			}
+			else if(clickX >= img_toggle_x && clickX <= (img_toggle_x + img_toggle.width) &&
+					clickY >= img_toggle_y && clickY <= (img_toggle_y + img_toggle.height))
+			{
+				if(toggle_puzzle_image)
+					toggle_puzzle_image = false;
+				else
+					toggle_puzzle_image = true;
+				draw();
+			}
+		}
+	}
+
+	function moveImage(e)
+	{
+		var clickX = e.pageX;
+		var clickY = e.pageY;
+		if(image_movement)
+		{
+			image_in_action_x = clickX;
+			image_in_action_y = clickY;
+		}
+	}
+
+	function selectImage(e)
+	{
+		if(!toggle_puzzle_image)
+			return;
+
+		if(image_movement)
+		{
+			nullifyImageMove();
+			draw();
+		}
+
+		var clickX = e.pageX;
+		var clickY = e.pageY;
+
+		//shuffled images
+		if(clickY >= (img_height + shuffled_image_margin) &&
+		   clickY <= (img_height + shuffled_image_margin + grid_height) &&
+		   clickX >= (img_left_x + img_left.width) &&
+		   clickX <= img_right_x)
+		{
+			for(var i=shuffle_start_image_count; i<(shuffle_start_image_count + shuffled_display_count); i++)
+			{
+				var s_coordinates = grid_shuffled[i].getCordinates();
+				var s_x = s_coordinates.getX();
+				var s_y = s_coordinates.getY();
+				if(clickX >= s_x && clickX <= s_x + grid_width &&
+				   clickY >= s_y && clickY <= s_y + grid_height)
+				{
+					image_in_action = grid_shuffled[i].getImage();
+					image_index = i;
+					image_from = 0;//shuffled
+					image_in_action_x = clickX;
+					image_in_action_y = clickY;
+					image_movement = true;
+					break;
+				}
+			}
+		}//ordered images..
+		else if(clickY > 0 &&
+				clickY < img_height &&
+				((clickX >= img_toggle_x && clickX <= (img_toggle_x + img_toggle.width) &&
+				  clickY >= img_toggle_y && clickY <= (img_toggle_y + img_toggle.height)) == false))
+		{
+			for(var i=0;i<grid_ordered.length;i++)
+			{
+				var o_coordinates = grid_ordered[i].getCordinates();
+				var o_x = o_coordinates.getX();
+				var o_y = o_coordinates.getY();
+				if(clickX >= o_x && clickX <= o_x + grid_width &&
+				   clickY >= o_y && clickY <= o_y + grid_height)
+				{
+					image_in_action = grid_ordered[i].getImage();
+					image_index = i;
+					image_from = 1;//ordered
+					image_in_action_x = clickX;
+					image_in_action_y = clickY;
+					image_movement = true;
+					break;
+				}
+
+			}
+		}
+	}
+
+	function initializeTiles()
+	{
+		ctx.drawImage(img,0,0,IMAGE_WIDTH,IMAGE_HEIGHT);
+
+		img_width = IMAGE_WIDTH;
+		img_height = IMAGE_HEIGHT;
+
+
+
+		grid_width = Math.floor(img_width/puzzle_partition);
+		grid_height = Math.floor(img_height/puzzle_partition);
+
+		grid_shuffled =  new Array(puzzle_grids);
+		grid_ordered = new Array(puzzle_grids);
+
+		var gridx=0;
+		var gridy=0;
+		var count=0;
+		for(var i=0;i<puzzle_partition;i++)
+		{
+			for(var j = 0; j<puzzle_partition; j++)
+			{
+				var gridImgData = ctx.getImageData(gridx,gridy,grid_width,grid_height);
+				var grid_img = new PuzzleImage(canvas,ctx,gridImgData,count);
+				grid_shuffled[count] = new Tile(canvas,ctx,-1,-1,count,grid_img);
+
+				grid_ordered[count] = new Tile(canvas,ctx,gridx,gridy,count,null);
+				gridx += grid_width;
+				count++;
+			}
+			gridx = 0;
+			gridy += grid_height;
+		}
+		loaded_images++;
+
+
+		shuffleTiles();
+
+		if(loaded_images >= total_images)
+		{
+			draw();
+		}
+	}
+
+	function displayImage()
+	{
+		ctx.drawImage(img,0,0,IMAGE_WIDTH,IMAGE_HEIGHT);
+	}
+
+	function displayGrid()
+	{
+		var gridx=grid_width;
+		var gridy=grid_height;
+
+		for(var i = 1; i<puzzle_partition; i++)
+		{
+			ctx.beginPath();
+			ctx.moveTo(0,gridy);
+			ctx.lineTo(img_width,gridy);
+			ctx.lineWidth=4;
+			ctx.stroke();
+			ctx.closePath();
+			gridy += grid_height;
+		}
+
+		for(var i = 1; i<puzzle_partition; i++)
+		{
+			ctx.beginPath();
+			ctx.moveTo(gridx,0);
+			ctx.lineTo(gridx,img_height);
+			ctx.lineWidth=4;
+			ctx.stroke();
+			ctx.closePath();
+			gridx += grid_width;
+		}
+	}
+
+	function displayShuffleButton()
+	{
+		ctx.drawImage(img_left,img_left_x,img_left_y);
+		ctx.drawImage(img_right,img_right_x,img_right_y);
+	}
+
+	function displayToggleButton()
+	{
+		ctx.drawImage(img_toggle,img_toggle_x,img_toggle_y);
+	}
+
+	function displayShuffledImages()
+	{
+		shuffled_display_count = Math.floor((canvas.width - (img_left.width + img_right.width))/grid_width);
+		var shuffled_x = img_left.width;
+		var shuffled_y = (img_height + shuffled_image_margin);
+		for(var i=shuffle_start_image_count; i<(shuffle_start_image_count + shuffled_display_count); i++)
+		{
+			if(grid_shuffled[i].getImage())
+			{
+				ctx.putImageData(grid_shuffled[i].getImage().getImageData(),
+								 shuffled_x,shuffled_y);
+				grid_shuffled[i].setCordinates(shuffled_x,shuffled_y);
+				shuffled_x += (grid_width + shuffled_image_margin);
+			}
+		}
+	}
+
+	function displayOrderedImages()
+	{
+		for(var i=0; i<grid_ordered.length; i++)
+		{
+			if(grid_ordered[i].getImage())
+			{
+				var tileCordinates = grid_ordered[i].getCordinates();
+				var ordered_x = tileCordinates.getX();
+				var ordered_y = tileCordinates.getY();
+				ctx.putImageData(grid_ordered[i].getImage().getImageData(),ordered_x,ordered_y);
+			}
+		}
+	}
+
+	function shiftShuffledTiles(nullImageIndex)
+	{
+		for(var i=nullImageIndex;i<grid_shuffled.length-1;i++)
+		{
+			var currentTile = grid_shuffled[i];
+			var nextTile = grid_shuffled[i+1];
+			currentTile.setImage(nextTile.getImage());
+			nextTile.setImage(null);
+		}
+	}
+
+	function verifyDone()
+	{
+		var count = 0;
+		for(var i=0;i<grid_ordered.length;i++)
+		{
+			if(grid_ordered[i].getImage())
+			{
+
+				if(grid_ordered[i].getImage().getImageOrder()== grid_ordered[i].getOrder())
+				{
+					count++;
+				}
+				else
+				{
+					break;
+				}
+			}
+			else
+			{
+				break;
+			}
+		}
+
+		if(count==puzzle_grids)
+			return true;
+
+		return false;
+	}
+
+	function shuffleTiles()
+	{
+		for(var i=0;i<grid_shuffled.length;i++)
+		{
+			var swapIndex = Math.floor(Math.floor(Math.random()*100)%16);
+			var temp = grid_shuffled[i];
+			grid_shuffled[i]=grid_shuffled[swapIndex];
+			grid_shuffled[swapIndex]=temp;
+		}
+	}
+
+	function clear()
+	{
+		ctx.clearRect(0, 0, canvas.width, canvas.height);
+	}
+
+
+</script>
+
+  </head>
+  <body onload="init()">
+	<canvas id = "myCanvas" height="500px" width="500px" border="3">
+	</canvas>
+	<br>
+  </body>
+</html>

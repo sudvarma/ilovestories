@@ -1,0 +1,486 @@
+<!DOCTYPE html >
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=9"/>
+    <style type="text/css" media="screen">
+    </style>
+
+<script type="text/javascript" src="ball.js">
+</script>
+<script type="text/javascript" src="curveprofile.js">
+</script>
+<script type="text/javascript" src="point.js">
+</script>
+
+
+<script>
+
+	function init()
+	{
+		life = 5;
+
+		//stats
+		clockwise = 0;
+		anticlockwise = 0;
+		running = 0;
+		putdown = life;
+
+		//after how much time a newball should be introduced
+		newballcount = 300;
+
+		//how many balls should be bare minimum running //stage 1 only 1
+		newball_runningcount = 1;
+
+		count = 0;
+		score = 0;
+		each_hit_score=10;
+ 		canvas = document.getElementById("myCanvas");
+		ctx = canvas.getContext("2d");
+
+		/*
+		 *Ball
+		 *
+		*/
+		ball_variablespeed = false;
+		balls_count = 5;
+		ballSpeed = 0.011;
+		ball_radius = 10;
+
+		/*
+		 *Curve
+		 *
+		*/
+		curve_start_point_x=50;
+		curve_start_point_y=canvas.height-50;
+		curve_end_point_x=canvas.width-curve_start_point_x;
+		curve_end_point_y=canvas.height-50;
+
+		small_curve_cp1_x=curve_start_point_x;
+		small_curve_cp1_y=Math.floor(curve_end_point_y/2);
+		small_curve_cp2_x=curve_end_point_x;
+		small_curve_cp2_y=Math.floor(curve_end_point_y/2);
+
+		medium_curve_cp1_x=curve_start_point_x+20;
+		medium_curve_cp1_y=Math.floor(curve_end_point_y/4);
+		medium_curve_cp2_x=curve_end_point_x-20;
+		medium_curve_cp2_y=Math.floor(curve_end_point_y/4);
+
+		long_curve_cp1_x=curve_start_point_x+50;
+		long_curve_cp1_y=Math.floor(curve_end_point_y/10);
+		long_curve_cp2_x=curve_end_point_x-50;
+		long_curve_cp2_y=Math.floor(curve_end_point_y/10);
+
+		//delta is added in control points, so that the balls donot
+		//touch eachother while traversing
+		delta = 100;
+
+		/*
+		 *Line
+		 *
+		*/
+		lineLength = 250;
+		//left and right line current angles
+		l_angle=0;
+		r_angle=0;
+
+		//left line start points
+		l_startX = 0 + lineLength;
+		l_startY = curve_end_point_y;
+
+		//right line start points
+		r_startX = canvas.width - lineLength;
+		r_startY = curve_end_point_y;
+
+		l_endX = l_startX - lineLength * Math.cos(l_angle);
+		l_endY = l_startY + lineLength * Math.sin(l_angle);
+
+		r_endX = r_startX + lineLength * Math.cos(r_angle);
+		r_endY = r_startY + lineLength * Math.sin(r_angle);
+
+		angle_finder=100;
+		//if angle_finder =100, then one push down = 6degree
+		//if angle_finder = 50, then one push down = 12degree
+		//profile for ball based on angle
+		small_angle = 6;
+		medium_angle = 12;
+
+		//grace is provided, so that the collission of ball
+		//with the bat need not be exact
+		upper_grace = 30;
+		lower_grace = 50;
+
+		addEventListener("keydown", keyDown, false);
+		addEventListener("keyup", keyUp, false);
+
+		balls = new Array(balls_count);
+		balls[0] = new MyBall(canvas,ctx,"blue",
+							  getBallSpeed());
+		balls[1] = new MyBall(canvas,ctx,"brown",
+							  getBallSpeed());
+		balls[2] = new MyBall(canvas,ctx,"yellow",
+							  getBallSpeed());
+		balls[3] = new MyBall(canvas,ctx,"green",
+							  getBallSpeed());
+		balls[4] = new MyBall(canvas,ctx,"red",
+							  getBallSpeed());
+
+		balls[0].setRunningState();
+		balls[0].setProfile(getSmallCurveProfile());
+		//balls[1].setProfile(getMediumCurveProfile());
+		//balls[2].setProfile(getLongCurveProfile());
+
+		setInterval("draw()",30);
+	}
+
+	function getBallSpeed()
+	{
+		if(ball_variablespeed)
+			return ballSpeed + (Math.random()/100);
+		else
+			return ballSpeed;
+
+	}
+
+	function getSmallCurveProfile()
+	{
+		var s_delta = Math.floor((Math.random() * delta));
+		return new MyCurve(canvas,ctx,
+	    				   curve_start_point_x,curve_start_point_y,  //start point
+						   (small_curve_cp1_x + s_delta),(small_curve_cp1_y - s_delta),  //first control point
+						   (small_curve_cp2_x - s_delta),(small_curve_cp2_y - s_delta),  //second control point
+						   curve_end_point_x,curve_end_point_y); //end point
+	}
+
+	function getMediumCurveProfile()
+	{
+		var m_delta = Math.floor((Math.random() * delta));
+		return new MyCurve(canvas,ctx,
+						   curve_start_point_x,curve_start_point_y,  //start point
+						   (medium_curve_cp1_x + m_delta),(medium_curve_cp1_y - m_delta),  //first control point
+						   (medium_curve_cp2_x - m_delta),(medium_curve_cp2_y - m_delta),  //second control point
+						   curve_end_point_x,curve_end_point_y); //end point
+	}
+
+	function getLongCurveProfile()
+	{
+		var l_delta = Math.floor((Math.random() * delta));
+		return new MyCurve(canvas,ctx,
+			  			   curve_start_point_x,curve_start_point_y,  //start point
+				  		   (long_curve_cp1_x + l_delta),(long_curve_cp1_y - l_delta),  //first control point
+				  		   (long_curve_cp2_x - l_delta),(long_curve_cp2_y - l_delta),  //second control point
+				  		   curve_end_point_x,curve_end_point_y); //end point
+	}
+
+	function clear()
+	{
+		for(var i=0;i<balls.length;i++)
+		{
+			if(balls[i] && balls[i].isRunningState())
+			{
+				var ballpoint = balls[i].getCoordinates();
+				if(balls[i].ballIncrement > 2 && balls[i].isRunningState())
+				{
+					var newcolor = balls[i].color;
+					balls[i]= null;
+					balls[i] =  new MyBall(canvas,ctx,newcolor,getBallSpeed());
+					putdown--;
+				}
+				else
+				{
+					running++;
+				}
+
+				//the ball is really clockwise or anticlockwise, if it is in the initial part of the cycle.
+				//otherwise, it is better to call it the opposite,,so that new ball could take really the opposite
+				if(balls[i] &&
+					balls[i].getProfile() &&
+					balls[i].getProfile().isClockwise() &&
+					balls[i].isRunningState())
+				{
+					if(Math.floor(balls[i].getCoordinates().getX())<((curve_end_point_x-curve_start_point_x)/2))
+						clockwise++;
+					else
+						anticlockwise++;
+				}
+
+
+				if(balls[i] &&
+				   balls[i].getProfile() &&
+				   balls[i].getProfile().isClockwise()==false &&
+				   balls[i].isRunningState())
+				{
+					if(Math.floor(balls[i].getCoordinates().getX())>((curve_end_point_x-curve_start_point_x)/2))
+						anticlockwise++;
+					else
+						clockwise++;
+				}
+				var ball_coord = balls[i].getCoordinates();
+				var ball_coord_x = ball_coord.getX();
+				var ball_coord_y = ball_coord.getY();
+				ctx.clearRect((ball_coord_x - ball_radius),(ball_coord_y - ball_radius),
+							  (ball_coord_x + ball_radius),(ball_coord_y + ball_radius));
+			}
+		}
+		ctx.clearRect(0, canvas.height-100, canvas.width, canvas.height-100);
+	}
+
+	function keyDown(e)
+	{
+		if(e.keyCode==32 && putdown > 0)
+		{
+			for(var i = 0;i<balls.length; i++)
+			{
+				if(balls[i] && balls[i].state==0)
+				{
+					balls[i].setRunningState();
+					balls[i].setProfile(getLongCurveProfile());
+					break;
+				}
+			}
+		}
+		else if(e.keyCode==37 && putdown > 0)
+		{
+			l_endX = 0;
+			l_endY = 0;
+			l_angle += (Math.PI*2) / angle_finder;
+			l_endX = l_startX - lineLength * Math.cos(l_angle);
+			l_endY = l_startY + lineLength * Math.sin(l_angle);
+		}
+		else if(e.keyCode==39 && putdown > 0)
+		{
+			r_endX = 0;
+			r_endY = 0;
+			r_angle += (Math.PI*2) / angle_finder;
+			r_endX = r_startX + lineLength * Math.cos(r_angle);
+			r_endY = r_startY + lineLength * Math.sin(r_angle);
+		}
+	}
+
+	function keyUp(e)
+	{
+		if(putdown > 0)
+		{
+			var angle = Math.floor((Math.sin(l_angle)*100));
+			for(var i=0; i<balls.length;i++)
+			{
+				if(balls[i] &&
+				   balls[i].isRunningState() &&
+				   balls[i].getProfile() &&
+				   balls[i].getCoordinates())
+				{
+
+					if(e.keyCode==37 &&
+							balls[i].getProfile().isClockwise() == false &&
+							balls[i].getCoordinates().getY() >= (l_startY - upper_grace) &&
+							balls[i].getCoordinates().getY() <= (l_endY + lower_grace))
+					{
+						if(angle <= small_angle)
+						{
+							balls[i].setProfile(null);
+							balls[i].setProfile(getSmallCurveProfile());
+						}
+						else if(angle > small_angle && angle < medium_angle)
+						{
+							balls[i].setProfile(null);
+							balls[i].setProfile(getMediumCurveProfile());
+						}
+						else
+						{
+							balls[i].setProfile(null);
+							balls[i].setProfile(getLongCurveProfile());
+						}
+						balls[i].setSpeed(getBallSpeed());
+						score += each_hit_score;
+					}
+					else if(e.keyCode==39 &&
+							balls[i].getProfile().isClockwise() &&
+							balls[i].getCoordinates().getY() >= (r_startY - upper_grace) &&
+				  			balls[i].getCoordinates().getY() <= (r_endY + lower_grace))
+				  	{
+						if(angle <= small_angle)
+						{
+							balls[i].setProfile(null);
+							var profile = getMediumCurveProfile();
+							profile.swapStartEnd();
+							balls[i].setProfile(profile);
+						}
+						else
+						{
+							balls[i].setProfile(null);
+							var profile = getLongCurveProfile();
+							profile.swapStartEnd();
+							balls[i].setProfile(profile);
+						}
+						balls[i].setSpeed(getBallSpeed());
+						score += each_hit_score;
+					}
+				}
+			}
+		}
+		l_angle = 0;
+		l_endX = 0;
+		l_endY = 0;
+		r_angle = 0;
+		r_endX = 0;
+		r_endY = 0;
+	}
+
+
+	function drawLine()
+	{
+		l_endX = l_startX - lineLength * Math.cos(l_angle);
+		l_endY = l_startY + lineLength * Math.sin(l_angle);
+
+		ctx.beginPath();
+		ctx.moveTo(l_startX,l_startY);
+		ctx.lineTo(l_endX,l_endY);
+		ctx.closePath();
+		ctx.stroke();
+		ctx.closePath();
+
+		r_endX = r_startX + lineLength * Math.cos(r_angle);
+		r_endY = r_startY + lineLength * Math.sin(r_angle);
+		ctx.beginPath();
+		ctx.moveTo(r_startX,r_startY);
+		ctx.lineTo(r_endX,r_endY);
+		ctx.closePath();
+		ctx.stroke();
+		ctx.closePath();
+	}
+
+	function drawAvailableBalls()
+	{
+		var x = (Math.floor(canvas.width/2)-ball_radius);
+		var y = curve_start_point_y-ball_radius;
+		var flag = 1;
+		var xr = x;
+		var xl = x;
+		for(var i=balls.length;i>=0;i--)
+		{
+			if(balls[i] && balls[i].isRunningState()==false)
+			{
+				balls[i].setCoordinates(x,y);
+				balls[i].drawStatic();
+				if(flag > 0)
+				{
+					xr = xr + 20;
+					x = xr
+
+				}
+				else
+				{
+					xl = xl - 20;
+					x = xl;
+				}
+				flag =  flag * -1;
+			}
+		}
+	}
+
+	function drawCenterBearing()
+	{
+		ctx.beginPath();
+		ctx.arc(Math.floor(canvas.width/2),curve_start_point_y,50,0,2*Math.PI);
+		ctx.fillStyle="black";
+		ctx.fill();
+		ctx.closePath();
+
+		ctx.beginPath();
+		ctx.arc(Math.floor(canvas.width/2),curve_start_point_y,25,0,2*Math.PI);
+		ctx.fillStyle="white";
+		ctx.fill();
+		ctx.closePath();
+
+		ctx.beginPath();
+		ctx.arc(Math.floor(canvas.width/2),curve_start_point_y,5,0,2*Math.PI);
+		ctx.fillStyle="black";
+		ctx.fill();
+
+		ctx.closePath();
+	}
+
+	function introduceNewBall()
+	{
+		if((count > newballcount || running < newball_runningcount) && putdown>0)
+		{
+			for(var i = 0;i<balls.length; i++)
+			{
+				if(balls[i] && balls[i].state==0)
+				{
+					balls[i].setRunningState();
+					if(clockwise > anticlockwise)
+					{
+						var profile = getLongCurveProfile();
+						profile.swapStartEnd();
+						balls[i].setProfile(null);
+						balls[i].setProfile(profile);
+					}
+					else
+					{
+						balls[i].setProfile(null);
+						balls[i].setProfile(getLongCurveProfile());
+					}
+					balls[i].setSpeed(getBallSpeed());
+					break;
+				}
+			}
+			count = 0;
+			running = 0;
+			clockwise = 0;
+			anticlockwise = 0;
+		}
+	}
+
+	function draw()
+	{
+		clear();
+		drawLine();
+		drawCenterBearing();
+		drawAvailableBalls();
+		introduceNewBall();
+
+		for(var i=0;i<balls.length;i++)
+		{
+			if(balls[i] && balls[i].isRunningState())
+				balls[i].draw();
+		}
+
+
+		var saved_gameStats = document.getElementById("saved_stats");
+		saved_gameStats.value = score;
+		var putdown_field = document.getElementById("putdown");
+		putdown_field.value = (putdown < 0 ) ? 0 : putdown;
+		count++;
+	}
+
+</script>
+
+  </head>
+  <body onload="init()">
+
+	<canvas id = "myCanvas" height="500px" width="500px">
+	</canvas>
+	<br>
+	<div>
+	<table>
+	<tr>
+	<td>
+		<h4> Score: </h4>
+	</td>
+	<td>
+		<input type="text" id="saved_stats" value="" column="3" readonly="true"/>
+	</td>
+	</tr>
+
+	<tr>
+	<td>
+		<h4> Life: </h4>
+	</td>
+	<td>
+		<input type="text" id="putdown" value="" column="3" readonly="true"/>
+	</td>
+	</tr>
+	<table>
+	</div>
+  </body>
+</html>
