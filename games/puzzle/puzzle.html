@@ -51,7 +51,7 @@
 
 		img = new Image();
 		img.onload = initializeTiles;
-		img.src = "http://localhost/puzzle/images/GoodNight.jpg";
+		img.src = "images/GoodNight.jpg";
 
 		img_left = new Image();
 		img_left.onload = function()
@@ -66,7 +66,7 @@
 			}
 
 		};
-		img_left.src = "http://localhost/puzzle/images/left.png";
+		img_left.src = "images/left.png";
 
 		img_right = new Image();
 		img_right.onload = function()
@@ -80,7 +80,7 @@
 				draw();
 			}
 		};
-		img_right.src = "http://localhost/puzzle/images/right.png";
+		img_right.src = "images/right.png";
 
 		img_toggle = new Image();
 		img_toggle.onload = function()
@@ -95,7 +95,7 @@
 			}
 
 		};
-		img_toggle.src = "http://localhost/puzzle/images/swap_image.png";
+		img_toggle.src = "images/swap_image.png";
 
 		setInterval("drawImageMove()",60);
 	}
